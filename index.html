@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>내 옷장에 맞는 옷 찾기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --border: #E8E4DC;
+    --text: #1A1A18;
+    --text-sub: #7A7870;
+    --text-hint: #AEABA3;
+    --accent: #D4691E;
+    --accent-bg: #FDF3EC;
+    --accent-border: #E8A96A;
+    --green: #2D7A5A;
+    --green-bg: #EDF7F2;
+    --red: #C0392B;
+    --red-bg: #FDF0EE;
+  }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 60px;
+  }
+
+  .wrap { width: 100%; max-width: 420px; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .steps { display: flex; gap: 6px; margin-bottom: 20px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: background 0.25s; }
+  .dot.on { background: var(--text); }
+
+  /* ── SCREEN 1: 상품 목록 ── */
+  .screen1-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .screen1-sub { font-size: 13px; color: var(--text-sub); margin-bottom: 20px; }
+
+  .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+  .product-card {
+    border: 1.5px solid var(--border); border-radius: 14px;
+    overflow: hidden; cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    background: var(--surface);
+    position: relative;
+  }
+  .product-card:active { transform: scale(0.97); }
+  .product-card.on { border-color: var(--accent); }
+  .product-card .check-badge {
+    display: none; position: absolute; top: 8px; right: 8px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 12px; align-items: center; justify-content: center;
+  }
+  .product-card.on .check-badge { display: flex; }
+  .product-card img { width: 100%; height: 140px; object-fit: cover; display: block; }
+  .product-card-info { padding: 10px; }
+  .product-card-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; line-height: 1.4; }
+  .product-card-price { font-size: 13px; font-weight: 700; }
+  .product-card-badge {
+    position: absolute; top: 8px; left: 8px;
+    font-size: 10px; font-weight: 500; padding: 3px 8px;
+    border-radius: 20px; background: var(--accent); color: #fff;
+  }
+
+  .select-count {
+    font-size: 13px; color: var(--text-sub); text-align: center;
+    margin-bottom: 14px;
+  }
+  .select-count span { color: var(--accent); font-weight: 700; }
+
+  /* ── SCREEN 2: 스타일·상황 질문 ── */
+  .section-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .section-sub { font-size: 13px; color: var(--text-sub); margin-bottom: 24px; }
+  .q-label { font-size: 14px; font-weight: 500; margin-bottom: 10px; color: var(--text); }
+  .q-hint { font-size: 12px; font-weight: 400; color: var(--text-hint); margin-left: 4px; }
+
+  /* 스타일 태그 칩 */
+  .style-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+  .style-chip {
+    display: flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: 40px;
+    border: 1.5px solid var(--border);
+    background: var(--surface); cursor: pointer;
+    transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif;
+  }
+  .style-chip:hover { background: #F5F3EE; }
+  .style-chip.on { border-color: var(--accent); background: var(--accent-bg); }
+  .chip-icon { font-size: 18px; line-height: 1; }
+  .chip-label { font-size: 13px; font-weight: 500; color: var(--text-sub); }
+  .style-chip.on .chip-label { color: var(--accent); }
+
+  /* 상황 카드 */
+  .sit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 28px; }
+  .sit-card {
+    border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 14px 12px; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .sit-card:hover { background: #F5F3EE; }
+  .sit-card.on { border-color: var(--accent); background: var(--accent-bg); }
+  .sit-icon { font-size: 22px; line-height: 1; margin-top: 1px; }
+  .sit-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .sit-desc { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+  .sit-card.on .sit-desc { color: var(--accent); opacity: 0.8; }
+
+  /* ── buttons ── */
+  .btn-primary {
+    width: 100%; padding: 15px;
+    background: var(--text); color: #fff;
+    border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-outline {
+    width: 100%; padding: 14px;
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    font-size: 15px; font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer; margin-top: 10px;
+    transition: background 0.15s;
+  }
+  .btn-outline:hover { background: #F3F1EC; }
+
+  /* ── result ── */
+  .result-box { border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .result-good { background: var(--green-bg); border: 1px solid #8FCDB3; }
+  .result-bad { background: var(--red-bg); border: 1px solid #E8A49D; }
+  .result-label { font-size: 12px; font-weight: 500; margin-bottom: 8px; }
+  .result-label.good { color: var(--green); }
+  .result-label.bad { color: var(--red); }
+  .score-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px; }
+  .score-num { font-size: 36px; font-weight: 700; }
+  .score-num.good { color: var(--green); }
+  .score-num.bad { color: var(--red); }
+  .score-denom { font-size: 14px; color: var(--text-sub); }
+  .score-bar-bg { height: 7px; background: rgba(0,0,0,0.08); border-radius: 4px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 4px; transition: width 0.9s cubic-bezier(.4,0,.2,1); }
+  .result-msg { font-size: 13px; margin-top: 10px; line-height: 1.6; }
+  .result-msg.good { color: #1A5740; }
+  .result-msg.bad { color: #7A2020; }
+
+  .alt-title { font-size: 13px; color: var(--text-sub); margin-bottom: 10px; }
+  .alt-card {
+    display: flex; gap: 12px; align-items: center;
+    padding: 12px; border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 8px;
+    cursor: pointer; transition: background 0.15s;
+    background: var(--surface);
+  }
+  .alt-card:hover { background: #F5F3EE; }
+  .alt-img { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; flex-shrink: 0; }
+  .alt-img img { width: 100%; height: 100%; object-fit: cover; }
+  .alt-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .alt-score { font-size: 12px; color: var(--text-sub); }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  .selected-items-preview {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .preview-chip {
+    font-size: 12px; padding: 4px 10px; border-radius: 20px;
+    background: var(--accent-bg); color: var(--accent);
+    border: 1px solid var(--accent-border);
+  }
+
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff;
+    font-size: 14px; padding: 12px 24px; border-radius: 40px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    white-space: nowrap; font-family: 'Noto Sans KR', sans-serif;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- SCREEN 1: 상품 선택 -->
+  <div id="s1" class="screen active">
+    <div class="steps">
+      <div class="dot on"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+    <p class="screen1-title">이번 여름, 어떤 옷이 끌리나요?</p>
+    <p class="screen1-sub">관심 있는 옷을 골라보세요 (여러 개 선택 가능)</p>
+
+    <div class="product-grid">
+      <div class="product-card" onclick="toggleProduct(this,'shirt')" data-k="shirt">
+        <span class="product-card-badge">-25%</span>
+        <div class="check-badge">✓</div>
+        <img src="https://images.unsplash.com/photo-1562572159-4efd90078af4?w=400&q=80" alt="린넨 셔츠" />
+        <div class="product-card-info">
+          <p class="product-card-name">오버핏 린넨 반팔 셔츠</p>
+          <p class="product-card-price">52,000원</p>
+        </div>
+      </div>
+      <div class="product-card" onclick="toggleProduct(this,'dress')" data-k="dress">
+        <span class="product-card-badge">신상</span>
+        <div class="check-badge">✓</div>
+        <img src="https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?w=400&q=80" alt="썸머 드레스" />
+        <div class="product-card-info">
+          <p class="product-card-name">플로럴 썸머 미디 드레스</p>
+          <p class="product-card-price">68,000원</p>
+        </div>
+      </div>
+      <div class="product-card" onclick="toggleProduct(this,'shorts')" data-k="shorts">
+        <span class="product-card-badge">-30%</span>
+        <div class="check-badge">✓</div>
+        <img src="https://images.unsplash.com/photo-1591195853828-11db59a44f43?w=400&q=80" alt="와이드 쇼츠" />
+        <div class="product-card-info">
+          <p class="product-card-name">와이드 코튼 쇼츠</p>
+          <p class="product-card-price">39,000원</p>
+        </div>
+      </div>
+      <div class="product-card" onclick="toggleProduct(this,'top')" data-k="top">
+        <span class="product-card-badge">인기</span>
+        <div class="check-badge">✓</div>
+        <img src="https://images.unsplash.com/photo-1503342394128-c104d54dba01?w=400&q=80" alt="크롭 탑" />
+        <div class="product-card-info">
+          <p class="product-card-name">루즈핏 크롭 반팔 티</p>
+          <p class="product-card-price">29,000원</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="select-count" id="countText">0개 선택됨</p>
+    <button class="btn-primary" id="nextBtn" disabled onclick="goTo(2)">선택한 옷 확인하기</button>
+  </div>
+
+  <!-- SCREEN 2: 스타일·상황 질문 -->
+  <div id="s2" class="screen">
+    <div class="steps">
+      <div class="dot"></div><div class="dot on"></div><div class="dot"></div>
+    </div>
+    <p class="section-title">잠깐, 이 옷들<br>내 옷장에 맞을까요?</p>
+    <p class="section-sub">평소 스타일과 언제 입을지만 골라줘요</p>
+
+    <div id="selectedPreview" class="selected-items-preview"></div>
+
+    <p class="q-label">내 평소 스타일은?<span class="q-hint">여러 개 선택 가능</span></p>
+    <div class="style-chips">
+      <button class="style-chip" onclick="toggleStyle(this,'minimal')" data-k="minimal">
+        <span class="chip-icon">🤍</span><span class="chip-label">미니멀</span>
+      </button>
+      <button class="style-chip" onclick="toggleStyle(this,'casual')" data-k="casual">
+        <span class="chip-icon">👟</span><span class="chip-label">캐주얼</span>
+      </button>
+      <button class="style-chip" onclick="toggleStyle(this,'resort')" data-k="resort">
+        <span class="chip-icon">🌴</span><span class="chip-label">리조트</span>
+      </button>
+      <button class="style-chip" onclick="toggleStyle(this,'office')" data-k="office">
+        <span class="chip-icon">💼</span><span class="chip-label">오피스</span>
+      </button>
+      <button class="style-chip" onclick="toggleStyle(this,'street')" data-k="street">
+        <span class="chip-icon">🧢</span><span class="chip-label">스트릿</span>
+      </button>
+      <button class="style-chip" onclick="toggleStyle(this,'feminine')" data-k="feminine">
+        <span class="chip-icon">🌸</span><span class="chip-label">페미닌</span>
+      </button>
+      <button class="style-chip" onclick="toggleStyle(this,'sporty')" data-k="sporty">
+        <span class="chip-icon">⚡</span><span class="chip-label">스포티</span>
+      </button>
+    </div>
+
+    <p class="q-label">이 옷, 주로 언제 입을 것 같아요?<span class="q-hint">여러 개 선택 가능</span></p>
+    <div class="sit-grid">
+      <div class="sit-card" onclick="toggleSit(this,'outdoor')">
+        <div class="sit-icon">🏖️</div>
+        <div><div class="sit-name">야외·나들이</div><div class="sit-desc">피크닉·공원·바다</div></div>
+      </div>
+      <div class="sit-card" onclick="toggleSit(this,'daily')">
+        <div class="sit-icon">☀️</div>
+        <div><div class="sit-name">일상</div><div class="sit-desc">카페·쇼핑·산책</div></div>
+      </div>
+      <div class="sit-card" onclick="toggleSit(this,'work')">
+        <div class="sit-icon">💼</div>
+        <div><div class="sit-name">출근</div><div class="sit-desc">사무실·미팅</div></div>
+      </div>
+      <div class="sit-card" onclick="toggleSit(this,'travel')">
+        <div class="sit-icon">✈️</div>
+        <div><div class="sit-name">여행</div><div class="sit-desc">국내·해외 여름여행</div></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="checkBtn" disabled onclick="showResult()">내 옷장 점수 보기</button>
+  </div>
+
+  <!-- SCREEN 3: 결과 -->
+  <div id="s3" class="screen">
+    <div class="steps">
+      <div class="dot"></div><div class="dot"></div><div class="dot on"></div>
+    </div>
+    <div id="resultArea"></div>
+    <button class="btn-outline" onclick="resetAll()">처음부터 다시 보기</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">구매가 완료됐어요!</div>
+
+<script>
+  const selProducts = new Set();
+  const selStyles = new Set();
+  const selSits = new Set();
+
+  const productNames = {
+    shirt: '린넨 반팔 셔츠', dress: '플로럴 드레스',
+    shorts: '와이드 쇼츠', top: '크롭 반팔 티'
+  };
+
+  // 각 상품별 스타일 궁합
+  const productStyleScore = {
+    shirt:   { minimal:25, casual:22, resort:18, office:15, street:10, feminine:8, sporty:5 },
+    dress:   { feminine:25, resort:25, casual:18, minimal:15, street:8, office:5, sporty:3 },
+    shorts:  { casual:25, sporty:22, street:20, resort:18, minimal:12, feminine:10, office:3 },
+    top:     { casual:25, sporty:22, street:20, resort:18, feminine:15, minimal:12, office:5 }
+  };
+  const productSitScore = {
+    shirt:   { outdoor:20, daily:22, work:20, travel:18 },
+    dress:   { outdoor:25, daily:20, travel:22, work:8 },
+    shorts:  { outdoor:25, daily:22, travel:20, work:5 },
+    top:     { outdoor:22, daily:25, travel:20, work:8 }
+  };
+
+  function toggleProduct(el, key) {
+    if (selProducts.has(key)) { selProducts.delete(key); el.classList.remove('on'); }
+    else { selProducts.add(key); el.classList.add('on'); }
+    const n = selProducts.size;
+    document.getElementById('countText').innerHTML = n > 0
+      ? `<span>${n}개</span> 선택됨` : '0개 선택됨';
+    document.getElementById('nextBtn').disabled = n === 0;
+  }
+
+  function toggleStyle(el, key) {
+    if (selStyles.has(key)) { selStyles.delete(key); el.classList.remove('on'); }
+    else { selStyles.add(key); el.classList.add('on'); }
+    checkReady();
+  }
+  function toggleSit(el, key) {
+    if (selSits.has(key)) { selSits.delete(key); el.classList.remove('on'); }
+    else { selSits.add(key); el.classList.add('on'); }
+    checkReady();
+  }
+  function checkReady() {
+    document.getElementById('checkBtn').disabled = !(selStyles.size > 0 && selSits.size > 0);
+  }
+
+  function goTo(n) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('s' + n).classList.add('active');
+    window.scrollTo(0, 0);
+    if (n === 2) renderPreview();
+  }
+
+  function renderPreview() {
+    const wrap = document.getElementById('selectedPreview');
+    wrap.innerHTML = [...selProducts].map(k =>
+      `<span class="preview-chip">${productNames[k]}</span>`
+    ).join('');
+  }
+
+  function showResult() {
+    // 선택한 상품들의 평균 점수 계산
+    let totalScore = 0;
+    let count = 0;
+    selProducts.forEach(pk => {
+      let s = 0, sMax = 0, tMax = 0;
+      selStyles.forEach(k => { s += (productStyleScore[pk][k] || 0); });
+      selSits.forEach(k => { s += (productSitScore[pk][k] || 0); });
+      const mxS = Math.min(selStyles.size, 2) * 25;
+      const mxT = Math.min(selSits.size, 2) * 25;
+      const mx = Math.max(mxS + mxT, 50);
+      totalScore += Math.min(Math.round((s / mx) * 100), 100);
+      count++;
+    });
+    const pct = Math.round(totalScore / count);
+
+    const area = document.getElementById('resultArea');
+    const selectedList = [...selProducts].map(k => productNames[k]).join(', ');
+
+    if (pct >= 65) {
+      area.innerHTML = `
+        <div class="result-box result-good">
+          <p class="result-label good">내 여름 옷장과 잘 어울려요</p>
+          <div class="score-row">
+            <span class="score-num good">${pct}</span>
+            <span class="score-denom">/ 100점</span>
+          </div>
+          <div class="score-bar-bg"><div class="score-bar-fill" style="width:0%;background:#2D7A5A;" id="bar"></div></div>
+          <p class="result-msg good">${selectedList} 모두<br>선택한 스타일과 상황에 잘 맞아요.<br>이번 여름 자주 꺼내 입게 될 것 같아요.</p>
+        </div>
+        <button class="btn-primary" onclick="showToast()">선택한 옷 모두 구매하기</button>
+      `;
+    } else {
+      area.innerHTML = `
+        <div class="result-box result-bad">
+          <p class="result-label bad">지금 옷장엔 잘 안 맞을 수 있어요</p>
+          <div class="score-row">
+            <span class="score-num bad">${pct}</span>
+            <span class="score-denom">/ 100점</span>
+          </div>
+          <div class="score-bar-bg"><div class="score-bar-fill" style="width:0%;background:#C0392B;" id="bar"></div></div>
+          <p class="result-msg bad">사도 잘 못 입을 가능성이 높아요.<br>내 스타일에 더 잘 맞는 옷을 찾아볼까요?</p>
+        </div>
+        <div class="divider"></div>
+        <p class="alt-title">내 여름 스타일에 더 잘 맞는 옷</p>
+        <div class="alt-card" onclick="showToast('상품 페이지로 이동합니다')">
+          <div class="alt-img"><img src="https://images.unsplash.com/photo-1594938298603-c8148c4b4f5b?w=200&q=70" alt="대안1"/></div>
+          <div>
+            <p class="alt-name">루즈핏 코튼 반팔 티셔츠</p>
+            <p class="alt-score">착용 가능성 91점 · 38,000원</p>
+          </div>
+        </div>
+        <div class="alt-card" onclick="showToast('상품 페이지로 이동합니다')">
+          <div class="alt-img"><img src="https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=200&q=70" alt="대안2"/></div>
+          <div>
+            <p class="alt-name">여름 스트라이프 카라 티</p>
+            <p class="alt-score">착용 가능성 85점 · 44,000원</p>
+          </div>
+        </div>
+        <button class="btn-outline" onclick="goTo(2)" style="margin-top:4px;">그래도 원래 옷 구매하기</button>
+      `;
+    }
+    goTo(3);
+    setTimeout(() => {
+      const bar = document.getElementById('bar');
+      if (bar) bar.style.width = pct + '%';
+    }, 100);
+  }
+
+  function resetAll() {
+    selProducts.clear(); selStyles.clear(); selSits.clear();
+    document.querySelectorAll('.product-card, .style-chip, .sit-card').forEach(el => el.classList.remove('on'));
+    document.getElementById('nextBtn').disabled = true;
+    document.getElementById('checkBtn').disabled = true;
+    document.getElementById('countText').innerHTML = '0개 선택됨';
+    goTo(1);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg || '구매가 완료됐어요!';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+</script>
+</body>
+</html>
